@@ -17,6 +17,8 @@ def control_panel():
     def generate_graph():
         # my_graph = graph(numbers.get_value(), probability.get_value())
         my_graph = graph(numbers.get_value(), radius = radius.get_value())
+        path = my_graph.start_routing(4, 18, 20)
+        print(path.__sizeof__())
         return my_graph.get_graph()
 
     def draw_graph():
