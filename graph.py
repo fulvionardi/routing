@@ -1,7 +1,6 @@
 import queue
 
 import networkx as nx
-import RREQ
 import random
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
