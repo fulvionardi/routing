@@ -1,7 +1,7 @@
 import tkinter as tk
 import random
 from graph import graph
-from components import slider, button
+from components import slider, button, combo_box
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -13,45 +13,29 @@ def control_panel():
     root = tk.Tk()
     root.title("Control Panel")
     root.geometry("500x500")
+    
+    def draw():
+        my_graph = graph(node_n = numbers.get_value(), average_d = avg_degree.get_value(), rewiring_p = rewiring_probability.get_value(), 
+                        radius = radius.get_value(), link_p = link_probability.get_value(), graph_type = combobox.get_selected())
+        my_graph.start_routing(4, 18)
+        my_graph.create_window()
+        my_graph.set_node_colors([1,18], "red")
 
-    def generate_graph():
-        # my_graph = graph(numbers.get_value(), probability.get_value())
-        my_graph = graph(numbers.get_value(), radius = radius.get_value())
-        path = my_graph.start_routing(4, 18, 20)
-        print(path.__sizeof__())
-        return my_graph.get_graph()
+    numbers = slider("Node Number:", 0, 100, 0, 0, 0, root, default_value = 20)
 
-    def draw_graph():
-        graph = generate_graph()
-        # Create a new Tkinter window
-        window = tk.Toplevel()  # Use Toplevel to open a separate window
-        window.title("Graph")
-        window.geometry("800x800")
-        print("Drawing Graph")
+    avg_degree = slider("Average Degree:", 0, 100, 1, 0, 0, root, default_value = 5)
 
-        # Create a matplotlib figure and axis
-        fig, ax = plt.subplots(figsize=(7, 7))
-        
-        # Draw the graph on the matplotlib figure
-        nx.draw(graph, ax=ax, with_labels=True, node_size=500, node_color="skyblue", font_size=10, font_weight="bold")
-        ax.set_title("Graph Visualization")
+    rewiring_probability = slider("Rewiring Probability:", 0, 1, 2, 0, 1, root, default_value = 0)
 
-        # Embed the matplotlib figure in the Tkinter window
-        canvas = FigureCanvasTkAgg(fig, master=window)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    loss_probability = slider("Packet Loss Probability:", 0, 1, 3, 0, 1, root, default_value = 0)
 
-    def get_value():
-        print(probability.get_value())
+    link_probability = slider("Link Probability:", 0, 1, 4, 0, 1, root, default_value = 0)
 
+    radius = slider("Radius:", 0, 1, 5, 0, 1, root, default_value = 0)
 
-    numbers = slider("Node Number:", 0, 100, 0, 0, 0, root)
+    mybutton = button("Draw Graph", draw, 6, 0, root)
 
-    probability = slider("Link Probability:", 0, 1, 1, 0, 2, root)
-
-    radius = slider("Radius:", 0, 1, 2, 0, 1, root)
-
-    mybutton = button("Draw Graph", draw_graph, 3, 0, root)
+    combobox = combo_box(7, 0, root)
     
     root.mainloop()
 
