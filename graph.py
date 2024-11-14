@@ -5,15 +5,16 @@ import random
 import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
+import time
 
 
 
 class graph:
 
-    def __init__(self, node_n, average_d = 0, rewiring_p = 0, link_p = 0, radius = 0, graph_type = 0):
+    def __init__(self, node_n, average_d = 0, rewiring_p = 0, link_p = 0, radius = 0, graph_type = 0, connectivity = True):
 
         self.G = None
-
+        self.window_open = False
         self.neighborhood = {}  # Initialize the neighborhood dictionary
         self.seq_numbers = [[] for _ in range(node_n)]  # Initialize sequence numbers
         self.previous = {}  # To track visited nodes for path reconstruction
@@ -25,7 +26,11 @@ class graph:
         else: 
             self.erg(node_n, link_p)
 
-        self.connect_graph()
+        self.pos = nx.spring_layout(self.G)
+
+        if (connectivity == True):
+            self.connect_graph()
+            
         self.initialize_neighborhood()
         
         self.color_map = ["skyblue"] * self.G.number_of_nodes()
@@ -53,25 +58,35 @@ class graph:
         print("Neighborhood dictionary initialized:", self.neighborhood)
     
     def create_window(self):
+        # Only create the window if it's not already open
+        if self.window_open:
+            return
+
         # Create a new Tkinter window
-        window = tk.Toplevel()  # Use Toplevel to open a separate window
+        window = tk.Toplevel()
         window.title("Graph")
         window.geometry("800x800")
-        print("Drawing Graph")
+        self.window_open = True  # Set the window_open flag to True
+
+        def on_close():
+            self.window_open = False  # Reset the flag when the window is closed
+            window.destroy()
+
+        # Bind the close event to on_close
+        window.protocol("WM_DELETE_WINDOW", on_close)
 
         # Create a matplotlib figure and axis
-        self.fig, self.ax = plt.subplots(figsize=(7, 7))  # Corrected order
+        self.fig, self.ax = plt.subplots(figsize=(7, 7))
         self.canvas = FigureCanvasTkAgg(self.fig, master=window)
 
         self.draw_graph()
-
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
     def draw_graph(self):
         self.ax.clear()
 
         # Draw the graph on the matplotlib figure
-        nx.draw(self.G, ax=self.ax, with_labels=True, node_size=500, node_color=self.color_map, font_size=10, font_weight="bold")
+        nx.draw(self.G, pos=self.pos, ax=self.ax, with_labels=True, node_size=500, node_color=self.color_map, font_size=10, font_weight="bold")
         self.ax.set_title("Graph Visualization")
 
         # Refresh the canvas
@@ -86,11 +101,11 @@ class graph:
             print("Node out of range.")
             return []
         
-    def broadcast(self, node, probability=0):
+    def broadcast(self, node, failure_p=0):
         """Broadcast to neighboring nodes based on a probability."""
         destination = []
         for neighbor in self.get_neighbors(node):
-            if random.random() >= probability:
+            if random.random() >= failure_p:
                 destination.append(neighbor) 
                 if neighbor not in self.previous:
                     self.previous[neighbor] = node
@@ -116,16 +131,21 @@ class graph:
         
         return path
     
-    def set_node_colors(self, nodes, color):
+    def set_node_colors(self, nodes, color, nodes2 = [], color2 = "red"):
         """Change color of specific nodes in the color map."""
         for node in nodes:
             if 0 <= node < len(self.color_map):  # Ensure node index is within bounds
                 self.color_map[node] = color
 
+        for node in nodes2:
+            if 0 <= node < len(self.color_map):  # Ensure node index is within bounds
+                self.color_map[node] = color2
+
+        self.canvas.flush_events()   # Process events to refresh the canvas
         self.draw_graph()
 
 
-    def start_routing(self, node, dest):
+    def start_routing1(self, node, dest):
         """Start routing from a node to a destination using flooding."""
         broadcasted = {node}
         flooding = [node]
@@ -145,3 +165,44 @@ class graph:
         print("Routing completed.")
         print("Broadcasted nodes:", broadcasted)
         print("Calculated Path:", self.get_path(node, dest))
+
+    def start_routing2(self, node, dest, failure_p = 0, animate = False):
+        if animate:
+            if not self.window_open or (not hasattr(self, 'ax') or not hasattr(self, 'canvas')):
+                self.create_window()
+            self.set_node_colors(self.G.nodes(), "skyblue", nodes2 = [node, dest], color2 = "#5E6EE6")
+
+        complete = False
+        broadcasted = {node}
+        flooding = {node}
+
+        while flooding and not complete:
+            flooded = set()
+
+            for n in flooding:
+                if n == dest:
+                    print(f"Destination {dest} reached.")
+                    complete = True
+                    break
+
+                for neighbor in self.broadcast(n, failure_p = failure_p):
+                    if neighbor not in broadcasted:
+                        broadcasted.add(neighbor)
+                        flooded.add(neighbor)
+
+            flooding = flooded
+
+            if animate:
+                self.set_node_colors(list(flooding), "#F5B642", nodes2 = [node, dest], color2 = "#5E6EE6")
+                time.sleep(0.5)       
+
+            # Update flooding to the newly found nodes
+            
+
+        if animate:
+            self.set_node_colors(self.get_path(node, dest), "#23DE6E", nodes2 = [node, dest], color2 = "#5E6EE6")
+
+        print("Routing completed.")
+        print("Broadcasted nodes:", broadcasted)
+        print("Calculated Path:", self.get_path(node, dest))
+
