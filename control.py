@@ -30,7 +30,7 @@ def control_panel():
         if my_graph is None:
             generate_graph()
 
-        my_graph.start_routing2(source.get_value(), destination.get_value(), failure_p = failure_p.get_value() ,animate = animate.get_value())  # Example routing call
+        my_graph.start_routing_animate(source.get_value(), destination.get_value(), failure_p = failure_p.get_value() ,animate = animate.get_value())  # Example routing call
 
 
 

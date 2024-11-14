@@ -141,9 +141,6 @@ class graph:
             if 0 <= node < len(self.color_map):  # Ensure node index is within bounds
                 self.color_map[node] = color2
 
-        self.canvas.flush_events()   # Process events to refresh the canvas
-        self.draw_graph()
-
 
     def start_routing1(self, node, dest):
         """Start routing from a node to a destination using flooding."""
@@ -166,41 +163,69 @@ class graph:
         print("Broadcasted nodes:", broadcasted)
         print("Calculated Path:", self.get_path(node, dest))
 
-    def start_routing2(self, node, dest, failure_p = 0, animate = False):
+    def start_routing_animate(self, node, dest, failure_p=0, animate=False):
         if animate:
             if not self.window_open or (not hasattr(self, 'ax') or not hasattr(self, 'canvas')):
                 self.create_window()
-            self.set_node_colors(self.G.nodes(), "skyblue", nodes2 = [node, dest], color2 = "#5E6EE6")
+            self.set_node_colors(self.G.nodes(), "skyblue", nodes2=[node, dest], color2="#5E6EE6")
 
         complete = False
-        broadcasted = {node}
+        reached = False
+        sending = False
+        broadcasted = set()
         flooding = {node}
+        flooded = {node}
+        path = []
+        packet_location = 0
 
-        while flooding and not complete:
-            flooded = set()
+        while flooding or not complete:
+            # Temporary set to collect new nodes to flood
+            new_flooded = set()
+
+            self.set_node_colors(list(flooding), "#F5B642", nodes2=[node, dest], color2="#5E6EE6")
 
             for n in flooding:
-                if n == dest:
+                if n == dest and not reached:
                     print(f"Destination {dest} reached.")
+                    reached = True
+                    path = self.get_path(node, dest)
+                    forward = path[1:]
+                    backtrack = path.copy()
+                    broadcasted.add(n)
+
+                if n not in broadcasted:
+                    broadcast = self.broadcast(n, failure_p=failure_p)
+                    broadcasted.add(n)
+                    # Add neighbors to new_flooded instead of flooded directly
+                    for neighbor in broadcast:
+                        new_flooded.add(neighbor)
+
+
+
+            # Now update flooded after the loop completes
+            flooded.update(new_flooded)
+
+            if reached:
+                self.set_node_colors(path, "#6AAB5C", nodes2=[node, dest], color2="#5E6EE6")
+
+            if sending and not complete:
+                self.color_map[forward.pop(0)] = "#518546"
+                if not forward:
                     complete = True
-                    break
 
-                for neighbor in self.broadcast(n, failure_p = failure_p):
-                    if neighbor not in broadcasted:
-                        broadcasted.add(neighbor)
-                        flooded.add(neighbor)
+            if reached and not sending:
+                self.color_map[backtrack.pop(-1)] = "#CF720E"
+                if not backtrack:
+                    sending = True
 
-            flooding = flooded
 
-            if animate:
-                self.set_node_colors(list(flooding), "#F5B642", nodes2 = [node, dest], color2 = "#5E6EE6")
-                time.sleep(0.5)       
+            self.canvas.flush_events()   # Process events to refresh the canvas
+            self.draw_graph()
 
+            time.sleep(1)
             # Update flooding to the newly found nodes
-            
+            flooding = new_flooded
 
-        if animate:
-            self.set_node_colors(self.get_path(node, dest), "#23DE6E", nodes2 = [node, dest], color2 = "#5E6EE6")
 
         print("Routing completed.")
         print("Broadcasted nodes:", broadcasted)
