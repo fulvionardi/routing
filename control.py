@@ -5,7 +5,7 @@ from components import slider, button, combo_box, check_box
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
+import pandas as pd
 
 # Function to create the control panel window
 def control_panel():
@@ -33,13 +33,32 @@ def control_panel():
         my_graph.route_multiple(source.get_value(), destination.get_value(), packet_n.get_value(), failure_p = failure_p.get_value(), delay = delay.get_value(), animated = animate.get_value())
 
     def check_properties():
-        if my_graph is None:
+        avg_recieved_packets_arr = []
+        avg_steps_for_arrival_arr = []
+        success_rate_arr = []
+        avg_hop_arr = []
+        n = 1000
+        for i in range(n):
+            my_graph = graph(node_n=node_n.get_value(), average_d=average_d.get_value(),
+                             rewiring_p=rewiring_p.get_value(),
+                             radius=radius.get_value(), link_p=link_p.get_value(), graph_type=graph_type.get_value(),
+                             connectivity=connectivity.get_value())
+
             generate_graph()
 
-        my_graph.all_combination(packet_n.get_value(), failure_p.get_value())
-        
+            avg_received_packets, avg_steps_for_arrival, success_rate, avg_hop =\
+                my_graph.all_combination(packet_n.get_value(), failure_p.get_value())
+            avg_recieved_packets_arr.append(avg_received_packets)
+            avg_steps_for_arrival_arr.append(avg_steps_for_arrival)
+            success_rate_arr.append(success_rate)
+            avg_hop_arr.append(avg_hop)
 
-
+        df = pd.DataFrame({'avg_received_packets': avg_recieved_packets_arr,
+                           'avg_steps_for_arrival': avg_steps_for_arrival_arr,
+                           'success_rate': success_rate_arr,
+                           'avg_hop': avg_hop_arr})
+        df.to_csv('output_nodes_{}_prob_{}_times_{}.csv'.format(node_n.get_value(), link_p.get_value(), n), index = False)
+        print("Done !!")
     def on_graph_type_change(selected_index):
         if selected_index == 0:  # "Watts Strogatz"
             rewiring_p.enable()

@@ -171,6 +171,8 @@ class graph:
         print("Routing Success Rate: ", success_rate)
         print("Average Routing Hops", avg_hop)
 
+        return avg_received_packets, avg_steps_for_arrival, success_rate, avg_hop
+
 
 
     def route_multiple(self, source, dest, times, failure_p=0, delay = 1, animated = False, combination = False):
