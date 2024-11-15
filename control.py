@@ -30,8 +30,14 @@ def control_panel():
         if my_graph is None:
             generate_graph()
 
-        my_graph.start_routing_animate(source.get_value(), destination.get_value(), failure_p = failure_p.get_value() ,animate = animate.get_value())  # Example routing call
+        my_graph.route_multiple(source.get_value(), destination.get_value(), packet_n.get_value(), failure_p = failure_p.get_value(), delay = delay.get_value(), animated = animate.get_value())
 
+    def check_properties():
+        if my_graph is None:
+            generate_graph()
+
+        my_graph.all_combination(packet_n.get_value(), failure_p.get_value())
+        
 
 
     def on_graph_type_change(selected_index):
@@ -79,9 +85,15 @@ def control_panel():
 
     failure_p = slider("Packet Loss Probability:", 0, 1, 2, 4, 1, root, default_value = 0)
 
-    animate  = check_box("Animate Route", 3, 4, root)     
+    packet_n = slider("Packet Number:", 0, 20, 3, 4, 0, root, default_value = 1)
 
-    route_button = button("Find Route", route, 3, 5, root)
+    delay = slider("Delay:", 0, 4, 4, 4, 1, root, default_value = 1)
+
+    animate  = check_box("Animate Route", 5, 4, root)     
+
+    route_button = button("Find Route", route, 6, 5, root)
+
+    route_combination = button("Check Properties", check_properties, 6, 6, root)
 
 
     on_graph_type_change(graph_type.get_value())

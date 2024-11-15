@@ -55,7 +55,7 @@ class graph:
     def initialize_neighborhood(self):
         """Populate the neighborhood dictionary for each node."""
         self.neighborhood = {node: list(self.G.neighbors(node)) for node in self.G.nodes}
-        print("Neighborhood dictionary initialized:", self.neighborhood)
+        # print("Neighborhood dictionary initialized:", self.neighborhood)
     
     def create_window(self):
         # Only create the window if it's not already open
@@ -141,33 +141,146 @@ class graph:
             if 0 <= node < len(self.color_map):  # Ensure node index is within bounds
                 self.color_map[node] = color2
 
+    
+    def all_combination(self, times, failure_p = 0):
+        self.received_packets = {node: 0 for node in self.G.nodes()}
+        self.steps_for_arrival = 0
+        self.succssful = 0
+        self.hop_sum = 0
 
-    def start_routing1(self, node, dest):
-        """Start routing from a node to a destination using flooding."""
-        broadcasted = {node}
-        flooding = [node]
+        i = 0
 
-        while flooding:
-            n = flooding.pop(0)
+        for source in self.G.nodes():
+            for dest in self.G.nodes():
+                if source < dest:  # Ensures (source, dest) is unique and avoids (source, source)
+                    i += 1
+                    self.route_multiple(source, dest, times, failure_p, combination = True)
 
-            if n == dest:
-                print(f"Destination {dest} reached.")
-                break
+        total = i * times
 
-            for neighbor in self.broadcast(n):
-                if neighbor not in broadcasted:
-                    broadcasted.add(neighbor)
-                    flooding.append(neighbor)
+        avg_received_packets = sum(self.received_packets.values()) / (len(self.G.nodes) * total)
+        avg_steps_for_arrival = self.steps_for_arrival / total
+        success_rate = self.succssful / total
+        if (self.succssful != 0):
+            avg_hop = self.hop_sum / self.succssful
+        else:
+            avg_hop = 0
 
+        print("Average Received Packet per Node: ", avg_received_packets)
+        print("Average Steps for Routing: ", avg_steps_for_arrival)
+        print("Routing Success Rate: ", success_rate)
+        print("Average Routing Hops", avg_hop)
+
+
+
+    def route_multiple(self, source, dest, times, failure_p=0, delay = 1, animated = False, combination = False):
+        if not combination:
+            self.received_packets = {node: 0 for node in self.G.nodes()}
+            self.steps_for_arrival = 0
+            self.succssful = 0
+            self.hop_sum = 0
+
+
+        for i in range(times):
+            self.previous = {}
+            if animated:
+                self.start_routing_animate(source, dest, failure_p, delay)
+            else:
+                self.start_routing(source, dest, failure_p)
+
+
+        if not (combination or animated):
+
+            avg_received_packets = sum(self.received_packets.values()) / (len(self.G.nodes) * times)
+            avg_steps_for_arrival = self.steps_for_arrival / times
+            success_rate = self.succssful / times
+
+            if (self.succssful != 0):
+                avg_hop = self.hop_sum / self.succssful
+            else:
+                avg_hop = 0
+
+            print("Average Received Packet per Node: ", avg_received_packets)
+            print("Average Steps for Routing: ", avg_steps_for_arrival)
+            print("Routing Success Rate: ", success_rate)
+            print("Average Routing Hops", avg_hop)
+
+
+
+    def start_routing(self, node, dest, failure_p=0):
+        complete = False
+        reached = False
+        sending = False
+        broadcasted = set()
+        flooding = {node}
+        flooded = {node}
+        path = []
+
+        while flooding or not complete:
+            # Temporary set to collect new nodes to flood
+            new_flooded = set()
+
+            for n in flooding:
+
+                if n == dest and not reached:
+                    print(f"Destination {dest} reached.")
+                    reached = True
+                    path = self.get_path(node, dest)
+                    forward = path[1:]
+                    backtrack = path.copy()
+                    broadcasted.add(n)
+
+                if n not in broadcasted:
+                    broadcast = self.broadcast(n, failure_p=failure_p)
+                    broadcasted.add(n)
+                    # Add neighbors to new_flooded instead of flooded directly
+                    for neighbor in broadcast:
+                        self.received_packets[neighbor] += 1
+                        new_flooded.add(neighbor)
+
+
+            flooded.update(new_flooded)
+
+
+
+            if sending and not complete:
+                self.steps_for_arrival += 1
+                if random.random() >= failure_p:
+                    self.received_packets[forward.pop(0)] += 1
+                if not forward:
+                    complete = True
+
+            if reached and not sending:
+                self.steps_for_arrival += 1
+                if random.random() >= failure_p:
+                    self.received_packets[backtrack.pop(-1)] += 1
+                if not backtrack:
+                    sending = True
+
+            if not reached:
+                self.steps_for_arrival += 1
+                if not new_flooded:
+                    break
+
+            # Update flooding to the newly found nodes
+            
+            flooding = new_flooded
+
+        if complete:
+            self.hop_sum += len(path) - 1
+            self.succssful += 1
+
+
+        self.steps_for_arrival -= 1
         print("Routing completed.")
-        print("Broadcasted nodes:", broadcasted)
+        # print("Broadcasted nodes:", broadcasted)
         print("Calculated Path:", self.get_path(node, dest))
 
-    def start_routing_animate(self, node, dest, failure_p=0, animate=False):
-        if animate:
-            if not self.window_open or (not hasattr(self, 'ax') or not hasattr(self, 'canvas')):
-                self.create_window()
-            self.set_node_colors(self.G.nodes(), "skyblue", nodes2=[node, dest], color2="#5E6EE6")
+
+    def start_routing_animate(self, node, dest, failure_p=0, delay = 1):
+        if not self.window_open or (not hasattr(self, 'ax') or not hasattr(self, 'canvas')):
+            self.create_window()
+        self.set_node_colors(self.G.nodes(), "skyblue", nodes2=[node, dest], color2="#5E6EE6")
 
         complete = False
         reached = False
@@ -176,7 +289,6 @@ class graph:
         flooding = {node}
         flooded = {node}
         path = []
-        packet_location = 0
 
         while flooding or not complete:
             # Temporary set to collect new nodes to flood
@@ -205,6 +317,10 @@ class graph:
             # Now update flooded after the loop completes
             flooded.update(new_flooded)
 
+            if not reached and not new_flooded:  # No more nodes to flood and destination not reached
+                print(f"Destination {dest} is not reachable.")
+                break  # Exit the loop
+
             if reached:
                 self.set_node_colors(path, "#6AAB5C", nodes2=[node, dest], color2="#5E6EE6")
 
@@ -222,8 +338,9 @@ class graph:
             self.canvas.flush_events()   # Process events to refresh the canvas
             self.draw_graph()
 
-            time.sleep(1)
+            time.sleep(delay)
             # Update flooding to the newly found nodes
+
             flooding = new_flooded
 
 
